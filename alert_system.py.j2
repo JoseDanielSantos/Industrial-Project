@@ -1,0 +1,100 @@
+import time
+import smtplib
+import os
+from email.mime.text import MIMEText
+from elasticsearch import Elasticsearch
+from datetime import datetime, timedelta, timezone
+
+# --- CONFIGURAÇÕES INJETADAS PELO ANSIBLE ---
+import time
+import smtplib
+import os
+from email.mime.text import MIMEText
+from elasticsearch import Elasticsearch
+from datetime import datetime, timedelta, timezone
+
+# --- CONFIGURAÇÕES INJETADAS PELO ANSIBLE ---
+ES_HOST = "http://localhost:9200"
+ES_USER = "{{ elastic_user }}"
+ES_PASS = "{{ elastic_password }}"
+
+EMAIL_ORIGEM = "sofia.c.fernandes03@gmail.com"
+EMAIL_PASSWORD = "{{ email_app_password }}" 
+EMAIL_DESTINO = "josedanielsantos@gmail.com"
+
+LIMITE_TEMPERATURA = 18.0 
+INTERVALO_MINUTOS = 15
+INDEX_NAME = "salalimpa-*" 
+
+def verificar_temperatura():
+    print(f"[{datetime.now()}] --- A verificar temperaturas... ---")
+    
+    try:
+        es = Elasticsearch(ES_HOST, basic_auth=(ES_USER, ES_PASS), verify_certs=False)
+        
+        tempo_atras = datetime.now(timezone.utc) - timedelta(minutes=INTERVALO_MINUTOS)
+        timestamp_str = tempo_atras.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+        # QUERY CORRIGIDA COM PAYLOAD.TEMPERATURE
+        query = {
+            "bool": {
+                "must": [
+                    {"range": {"payload.temperature": {"gt": LIMITE_TEMPERATURA}}}, 
+                    {"range": {"@timestamp": {"gte": timestamp_str}}} 
+                ]
+            }
+        }
+
+        resposta = es.search(index=INDEX_NAME, query=query, size=1)
+        hits = resposta['hits']['total']['value']
+        
+        if isinstance(hits, dict):
+            hits = hits['value']
+            
+        if hits > 0:
+            print(f"ALERTA: {hits} registos acima de {LIMITE_TEMPERATURA}C!")
+            dado = resposta['hits']['hits'][0]['_source']
+            
+            # LEITURA CORRIGIDA DO PAYLOAD
+            valor_lido = dado.get('payload', {}).get('temperature', 'N/A')
+            sensor = dado.get('sensor', {}).get('device', 'Desconhecido') 
+            
+            enviar_email(sensor, valor_lido)
+        else:
+            print("Temperatura normal.")
+            
+    except Exception as e:
+        print(f"ERRO: {e}")
+
+def enviar_email(sensor, valor):
+    assunto = f"ALERTA: Temperatura Alta ({valor}C) no Laboratorio"
+    corpo = f"""
+    AVISO DE TEMPERATURA
+    
+    Valor detetado: {valor}C
+    Limite definido: {LIMITE_TEMPERATURA}C
+    
+    Por favor verificar o sistema de climatizacao.
+    Hora do alerta: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+    """
+
+    msg = MIMEText(corpo)
+    msg['Subject'] = assunto
+    msg['From'] = EMAIL_ORIGEM
+    msg['To'] = EMAIL_DESTINO
+
+    try:
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(EMAIL_ORIGEM, EMAIL_PASSWORD)
+        server.sendmail(EMAIL_ORIGEM, EMAIL_DESTINO, msg.as_string())
+        server.quit()
+        print(f"-> EMAIL ENVIADO PARA {EMAIL_DESTINO}")
+    except Exception as e:
+        print(f"Erro a enviar email: {e}")
+
+if __name__ == "__main__":
+    print("--- Iniciando Servico de Monitorizacao de Temperatura ---")
+    while True:
+        verificar_temperatura()
+        time.sleep(300)

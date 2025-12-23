@@ -1,0 +1,15 @@
+[Unit]
+Description=Serviço MQTT para Logstash
+After=network.target docker.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory={{ compose_path }}
+ExecStart=/usr/bin/python3 {{ compose_path }}/mqtt2logstash.py
+Restart=always
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,132 @@
+---
+# PARTE 1: Preparar as imagens na VM1 (Controladora - COM Internet)
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    images:
+      - "eclipse-mosquitto:latest"
+      - "ghcr.io/koenkk/zigbee2mqtt:latest"
+    tmp_dir: "/tmp/docker_images"
+
+  tasks:
+    - name: Criar diretoria temporária local
+      file:
+        path: "{{ tmp_dir }}"
+        state: directory
+
+    - name: Fazer Pull das imagens (VM1)
+      community.docker.docker_image:
+        name: "{{ item }}"
+        source: pull
+      loop: "{{ images }}"
+
+    - name: Salvar imagens em .tar
+      community.docker.docker_image:
+        name: "{{ item }}"
+        archive_path: "{{ tmp_dir }}/{{ item | replace('/', '_') | replace(':', '_') }}.tar"
+        source: local
+      loop: "{{ images }}"
+
+# PARTE 2: Instalar na VM2 (Alvo - SEM Internet)
+- hosts: zigbee_servers
+  become: true
+  vars:
+    remote_tmp_dir: "/tmp/docker_load"
+    base_path: "/opt/iot_stack"
+    zigbee_device: "/dev/ttyUSB0" # Confirma se é USB0 ou ACM0
+
+  tasks:
+    # --- 1. Preparação de Pastas ---
+    - name: Criar diretorias necessárias
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - "{{ remote_tmp_dir }}"
+        - "{{ base_path }}/mosquitto/config"
+        - "{{ base_path }}/mosquitto/data"
+        - "{{ base_path }}/mosquitto/log"
+        - "{{ base_path }}/zigbee2mqtt/data" # O volume aponta para aqui
+
+    # --- 2. Transferência e Load das Imagens ---
+    - name: Copiar imagens .tar para a VM2
+      copy:
+        src: "/tmp/docker_images/{{ item | replace('/', '_') | replace(':', '_') }}.tar"
+        dest: "{{ remote_tmp_dir }}/"
+      loop:
+        - "eclipse-mosquitto:latest"
+        - "ghcr.io/koenkk/zigbee2mqtt:latest"
+
+    - name: Carregar imagens para o Docker (Offline)
+      shell: "docker load -i {{ remote_tmp_dir }}/{{ item | replace('/', '_') | replace(':', '_') }}.tar"
+      loop:
+        - "eclipse-mosquitto:latest"
+        - "ghcr.io/koenkk/zigbee2mqtt:latest"
+
+    - name: Criar rede Docker 'iot_network'
+      community.docker.docker_network:
+        name: iot_network
+        state: present
+
+    # --- 3. Configuração dos Ficheiros (COM DETEÇÃO DE MUDANÇA) ---
+    - name: Copiar mosquitto.conf
+      copy:
+        src: 'mosquitto/config/mosquitto.conf'
+        dest: "{{ base_path }}/mosquitto/config/mosquitto.conf"
+      register: mosquitto_conf_status # Guarda o estado (se mudou ou não)
+
+    - name: Copiar ex_conv.js
+      copy:
+        src: 'zigbee2mqtt/ex_conv.js'
+        dest: "{{ base_path }}/zigbee2mqtt/data/ex_conv.js"
+      register: z2m_js_status
+
+    - name: Copiar configuration.yaml 
+      copy:
+        src: 'zigbee2mqtt/configuration.yaml'
+        # AQUI ESTAVA O ERRO: Tem de ir para dentro de /data/ porque é esse o volume montado
+        dest: "{{ base_path }}/zigbee2mqtt/data/configuration.yaml" 
+      register: z2m_conf_status # Guarda o estado (se mudou ou não)
+
+    # --- 4. Contentores (Geridos pelo Ansible) ---
+    
+    # MOSQUITTO
+    - name: Container Mosquitto
+      community.docker.docker_container:
+        name: mosquitto
+        image: eclipse-mosquitto:latest
+        state: started
+        restart_policy: unless-stopped
+        restart: "{{ mosquitto_conf_status.changed }}" # Reinicia SÓ se o config mudar
+        networks:
+          - name: iot_network
+        ports:
+          - "1883:1883"
+        volumes:
+          - "{{ base_path }}/mosquitto/config:/mosquitto/config"
+          - "{{ base_path }}/mosquitto/data:/mosquitto/data"
+          - "{{ base_path }}/mosquitto/log:/mosquitto/log"
+
+    # ZIGBEE2MQTT
+    - name: Container Zigbee2MQTT
+      community.docker.docker_container:
+        name: zigbee2mqtt
+        image: ghcr.io/koenkk/zigbee2mqtt:latest
+        state: started
+        restart_policy: unless-stopped
+        restart: "{{ z2m_conf_status.changed or z2m_js_status.changed }}" 
+        networks:
+          - name: iot_network
+        ports:
+          - "8080:8080"
+        devices:
+          - "{{ zigbee_device }}:{{ zigbee_device }}"
+        env:
+          TZ: "Europe/Lisbon"
+        privileged: true
+        volumes:
+          # Mapeia a pasta 'data' do host para 'app/data' do container
+          - "{{ base_path }}/zigbee2mqtt/data:/app/data" 
+          - "/run/udev:/run/udev:ro"

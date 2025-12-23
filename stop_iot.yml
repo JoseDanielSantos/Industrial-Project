@@ -1,0 +1,11 @@
+---
+- hosts: zigbee_servers
+  become: true
+  tasks:
+    - name: Parar o contentor Zigbee2MQTT
+      shell: "docker stop zigbee2mqtt"
+      ignore_errors: yes  # Não falha se já estiver parado
+
+    - name: Parar o contentor Mosquitto
+      shell: "docker stop mosquitto"
+      ignore_errors: yes

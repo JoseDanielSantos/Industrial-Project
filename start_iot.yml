@@ -1,0 +1,13 @@
+---
+- hosts: zigbee_servers
+  become: true
+  tasks:
+    - name: Ligar o Mosquitto
+      shell: "docker start mosquitto"
+      
+    - name: Aguardar 5 segundos para o Mosquitto iniciar
+      pause:
+        seconds: 5
+
+    - name: Ligar o Zigbee2MQTT
+      shell: "docker start zigbee2mqtt"

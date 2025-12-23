@@ -1,0 +1,4 @@
+paho-mqtt
+requests
+pyyaml
+python-logstash-async
