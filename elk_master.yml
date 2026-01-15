@@ -5,16 +5,10 @@
   vars:
     logstash_input_port: 5044
     compose_path: "{{ playbook_dir }}"
-    
-  # NOVO: Incluir o arquivo de segredos encriptado.
-  # O Ansible pedirá a Palavra-Passe Mestra do Vault no momento da execução. 
+
   vars_files:
     - secrets.yml 
-    
   tasks:
-    # --- PRÉ-REQUISITOS E CONFIGURAÇÃO DE SEGURANÇA ---
-    
-    # 0.1 INSTALAR FIREWALL (já validado)
     - name: 0.1 INSTALAR FIREWALL - Garantir que o UFW está instalado
       ansible.builtin.package:
         name: ufw
@@ -30,22 +24,17 @@
 
     - name: 0.13 INSTALAR MÓDULOS - Instalar módulos Python do requirements.txt
       ansible.builtin.pip:
-        requirements: "{{ compose_path }}/requirements.txt" # O ficheiro lista as dependências
+        requirements: "{{ compose_path }}/requirements.txt" 
         state: present
         executable: pip3
         extra_args: "--break-system-packages"
-    # NOVO: Esta tarefa garante que o logstash.conf é gerado com as credenciais.
-    # Isto exige o uso de um arquivo de template (logstash.conf.j2)
+
     - name: 0.2 CONFIGURAR LOGSTASH - Copiar o logstash.conf com credenciais do Vault
       ansible.builtin.template:
-        src: logstash.conf.j2       # O novo arquivo de template
+        src: logstash.conf.j2       
         dest: "{{ compose_path }}/logstash/pipeline/logstash.conf"
         mode: '0644'
-      # Esta tarefa garante que a configuração correta será carregada no Passo 2.1
-      
-    # --- FASE 1: PROVISIONAMENTO E DOCKER ---
-    
-    # 1.1 GARANTIR SERVIÇO - Verificar que o Docker Daemon está a correr
+
     - name: 1.0 INSTALAR DOCKER E DEPENDENCIAS
       ansible.builtin.package:
         name:
@@ -61,10 +50,6 @@
         state: started
         enabled: true
 
-    # --- FASE 2: ORQUESTRAÇÃO DO ELK ---
-    
-    # NOTA CRÍTICA: Se a segurança estiver ativada, deverá usar uma imagem ES que a suporte
-    # e alterar o docker-compose para: xpack.security.enabled: true
     - name: 2.2 DEPLOYMENT - Levantar o ELK Stack via Docker Compose
       community.docker.docker_compose_v2:
         project_src: "{{ compose_path }}"
@@ -72,10 +57,9 @@
 
     - name: 2.3 CONFIGURAR SERVIÇO SYSTEMD
       ansible.builtin.template:
-        src: sensor_service.service.j2   # <--- Ansible procura AQUI na sua pasta
-        dest: /etc/systemd/system/sensor_service.service # <--- E envia para AQUI no sistema
+        src: sensor_service.service.j2 
+        dest: /etc/systemd/system/sensor_service.service 
 
-    # 3.1 FIREWALL - Permitir tráfego TCP na porta do Logstash (5044)
     - name: 3.1 FIREWALL - Permitir tráfego TCP na porta do Logstash ({{ logstash_input_port }})
       community.general.ufw:
         rule: allow
@@ -83,36 +67,33 @@
         proto: tcp
         direction: in              
         state: enabled
-      
-    # --- FASE 4: CONFIRMAR ACESSO À API REST ---
-    
-    # A verificação da API agora deve incluir as credenciais.
+
     - name: 4.1 AGUARDAR CHECK - Esperar que o Elasticsearch esteja UP (API :9200) com Auth
       ansible.builtin.uri:
         url: "http://localhost:9200/_cat/health"
         method: GET
-        user: "{{ elastic_user }}"          # Usa a variável desencriptada do Vault
-        password: "{{ elastic_password }}"  # Usa a variável desencriptada do Vault
+        user: "{{ elastic_user }}"          
+        password: "{{ elastic_password }}"  
         status_code: 200
         validate_certs: false
       register: es_status
       until: es_status.status == 200
       retries: 30
       delay: 5
-      
+
     - name: 4.2 CONFIGURAR KIBANA USER - Definir a password do utilizador kibana_system
       ansible.builtin.uri:
         url: "http://localhost:9200/_security/user/kibana_system/_password"
         method: POST
-        user: "{{ elastic_user }}"        # Utilizador admin (elastic) para ter permissão
-        password: "{{ elastic_password }}" # Password do admin
+        user: "{{ elastic_user }}"        
+        password: "{{ elastic_password }}"
         force_basic_auth: true
         body_format: json
         body:
-          password: "changeme"  # <--- A password que quer definir para o kibana_system
+          password: "[palavra passe]"  
         status_code: 200
         validate_certs: false
-    # ----------------------------------------------------      
+
       
     - name: 5.1 ATIVAR SERVIÇO PYTHON DE LEITURA
       ansible.builtin.systemd:
