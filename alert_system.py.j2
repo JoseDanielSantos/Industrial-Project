@@ -51,7 +51,6 @@ def verificar_temperatura():
             print(f"ALERTA: {hits} registos acima de {LIMITE_TEMPERATURA}C!")
             dado = resposta['hits']['hits'][0]['_source']
             
-            # LEITURA CORRIGIDA DO PAYLOAD
             valor_lido = dado.get('payload', {}).get('temperature', 'N/A')
             sensor = dado.get('sensor', {}).get('device', 'Desconhecido') 
             
