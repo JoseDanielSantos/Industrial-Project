@@ -90,7 +90,7 @@
         force_basic_auth: true
         body_format: json
         body:
-          password: "[palavra passe]"  
+          password: "changeme"  
         status_code: 200
         validate_certs: false
 
