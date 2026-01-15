@@ -5,7 +5,6 @@ from email.mime.text import MIMEText
 from elasticsearch import Elasticsearch
 from datetime import datetime, timedelta, timezone
 
-# --- CONFIGURAÇÕES INJETADAS PELO ANSIBLE ---
 import time
 import smtplib
 import os
@@ -13,14 +12,13 @@ from email.mime.text import MIMEText
 from elasticsearch import Elasticsearch
 from datetime import datetime, timedelta, timezone
 
-# --- CONFIGURAÇÕES INJETADAS PELO ANSIBLE ---
 ES_HOST = "http://localhost:9200"
 ES_USER = "{{ elastic_user }}"
 ES_PASS = "{{ elastic_password }}"
 
-EMAIL_ORIGEM = "sofia.c.fernandes03@gmail.com"
+EMAIL_ORIGEM = "[insira o mail]"
 EMAIL_PASSWORD = "{{ email_app_password }}" 
-EMAIL_DESTINO = "josedanielsantos@gmail.com"
+EMAIL_DESTINO = "[insira o mail]"
 
 LIMITE_TEMPERATURA = 18.0 
 INTERVALO_MINUTOS = 15
@@ -34,8 +32,6 @@ def verificar_temperatura():
         
         tempo_atras = datetime.now(timezone.utc) - timedelta(minutes=INTERVALO_MINUTOS)
         timestamp_str = tempo_atras.strftime('%Y-%m-%dT%H:%M:%SZ')
-
-        # QUERY CORRIGIDA COM PAYLOAD.TEMPERATURE
         query = {
             "bool": {
                 "must": [
