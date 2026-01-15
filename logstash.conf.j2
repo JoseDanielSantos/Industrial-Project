@@ -3,14 +3,13 @@ input {
     host => "0.0.0.0"
     port => 5044
     
-    # Desligar ECS para evitar conflitos de campos automáticos
+
     ecs_compatibility => "disabled"
 
-    # Credenciais definidas no teu script Python
-    user => "botas"
-    password => "minha_senha_123"
 
-    # Coloca o JSON recebido dentro do campo [python_event] para organizarmos depois
+    user => "elastic"
+    password => "changeme"
+
     codec => json {
       target => "python_event"
     }
@@ -18,18 +17,18 @@ input {
 }
 
 filter {
-  # 1) Mover e renomear os dados que vêm do Python
+
   mutate {
     rename => { "[python_event][source]" => "[sensor][source]" }
     rename => { "[python_event][device]" => "[sensor][device]" }
     rename => { "[python_event][topic]"  => "[sensor][topic]" }
     rename => { "[python_event][ingested_at]" => "ingested_at" }
     
-    # O 'payload' (onde estão os valores do Zigbee) vai para um campo temporário
+
     rename => { "[python_event][payload]" => "payload_data" }
   }
 
-  # 2) Processar TEMPERATURA (só se existir na mensagem)
+
   if [payload_data][temperature] {
     mutate {
       add_field => { "temperature" => "%{[payload_data][temperature]}" }
@@ -39,7 +38,6 @@ filter {
     }
   }
 
-  # 3) Processar HUMIDADE (só se existir na mensagem)
   if [payload_data][humidity] {
     mutate {
       add_field => { "humidity" => "%{[payload_data][humidity]}" }
@@ -49,7 +47,7 @@ filter {
     }
   }
 
-  # 4) Processar QUALIDADE DO SINAL (útil para Zigbee)
+
   if [payload_data][linkquality] {
     mutate {
       add_field => { "link_quality" => "%{[payload_data][linkquality]}" }
@@ -58,8 +56,7 @@ filter {
       convert => { "link_quality" => "integer" }
     }
   }
-  
-  # 5) Processar BATERIA (útil para sensores a pilhas)
+
   if [payload_data][battery] {
     mutate {
       add_field => { "battery" => "%{[payload_data][battery]}" }
@@ -69,7 +66,6 @@ filter {
     }
   }
 
-  # 6) Limpeza final (Remove campos técnicos que não interessam no Kibana)
   mutate {
     remove_field => [
       "python_event", 
