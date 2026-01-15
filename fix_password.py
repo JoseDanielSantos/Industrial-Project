@@ -1,13 +1,10 @@
 import requests
 
-# URL para mudar a senha do utilizador de sistema do Kibana
 url = "http://localhost:9200/_security/user/kibana_system/_password"
 
-# Usamos o ADMIN (elastic) para mudar a senha do sub-utilizador
 auth_admin = ("elastic", "changeme")
 
-# Esta é a senha que tem de bater certo com o docker-compose
-nova_senha = {"password": "changeme"}
+nova_senha = {"password": "[new password]"}
 
 print("A tentar definir a password do kibana_system...")
 
