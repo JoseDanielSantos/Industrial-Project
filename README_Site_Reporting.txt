@@ -16,8 +16,11 @@ Configuração da Interface Web e dos Relatórios:
 └── templates/				(nome da pasta onde se encontra index.html)
 └── index.html         (a página web com o iFrame do Kibana)
 
+-> não esquecer de mudar o user e a pass no script app.py (os campos em que está substituição deverá ser feita estão assinalados por comentário)
+
 4) Execução do Site - para iniciar o servidor web na porta 5000: no (venv) ainda, python app.py (à partida ficará ligado sempre que o setup estiver ligado)
 
 5) Para manter o site a correr em background (mesmo fechando o terminal): nohup python app.py > site.log 2>&1 &
+
 
 A O site ficará disponível em: http://[IP_DO_SERVIDOR]:5000 O relatório PDF é gerado no botão "Download PDF Report". 
