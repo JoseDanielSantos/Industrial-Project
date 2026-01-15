@@ -8,9 +8,9 @@ ES_HOST = "http://localhost:9200"
 ES_USER = "elastic" 
 ES_PASS = "DkHgTURj1qghpxqNC3Vi" 
 
-EMAIL_ORIGEM = "[insira o mail]"
-EMAIL_PASSWORD = "[tokken do mail de origem]" 
-EMAIL_DESTINO = "[insira o mail]"
+#EMAIL_ORIGEM = "[insira o mail]"
+#EMAIL_PASSWORD = "[tokken do mail de origem]" 
+#EMAIL_DESTINO = "[insira o mail]"
 
 LIMITE_TEMPERATURA = 25.0
 INTERVALO_MINUTOS = 5  
