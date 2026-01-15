@@ -7,8 +7,8 @@ import io
 app = Flask(__name__)
 
 ES_HOST = "http://localhost:9200"
-ES_USER = "elastic"
-ES_PASS = "changeme" 
+#ES_USER = "elastic"
+#ES_PASS = "changeme" 
 LOGO_PATH = "PICadvanced_logo.png"
 
 
