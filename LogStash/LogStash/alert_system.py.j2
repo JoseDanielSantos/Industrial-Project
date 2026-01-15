@@ -1,0 +1,131 @@
+import time
+import smtplib
+import os
+from email.mime.text import MIMEText
+from elasticsearch import Elasticsearch
+from datetime import datetime, timedelta, timezone
+
+ES_HOST = "http://localhost:9200"
+ES_USER = "{{ elastic_user }}"
+ES_PASS = "{{ elastic_password }}"
+
+EMAIL_ORIGEM = "[insira o respetivo mail]"
+EMAIL_PASSWORD = "{{ email_app_password }}" 
+EMAIL_DESTINO = "[insira o respetivo mail]"
+
+
+
+LIMITES = {
+    # Endpoint 2 = Temperatura
+    'temperature_2': {'limite': 10.0, 'nome': 'Temperatura', 'unidade': 'C'}, # Baixei para 10 (Real é ~18)
+    
+    # Endpoint 3 = Humidade
+    'temperature_3': {'limite': 50.0, 'nome': 'Humidade', 'unidade': '%'}, # Baixei para 50 (Real é ~56)
+    
+    # Endpoint 1 = PM2.5
+    'temperature_1': {'limite': 100, 'nome': 'Particulas PM2.5', 'unidade': 'ug/m3'}, # Baixei para 100 (Real é ~144)
+    
+    # Endpoint 4 = Vibração
+    'temperature_4': {'limite': 0.5, 'nome': 'Vibracao', 'unidade': 'vib'}, # Baixei para 0.5 (Real é ~1.08)
+    
+    # Endpoint 5 = PM1
+    'temperature_5': {'limite': 50, 'nome': 'Particulas PM1', 'unidade': 'ug/m3'}, # Baixei para 50 (Real é ~81)
+
+    # NOVO: Endpoint 6 = PM10 (Aparecia na tua imagem como 147)
+    'temperature_6': {'limite': 100, 'nome': 'Particulas PM10', 'unidade': 'ug/m3'} 
+}
+
+INTERVALO_MINUTOS = 5 
+INDEX_NAME = "salalimpa-*" 
+
+def verificar_sensores():
+    print(f"\n[{datetime.now()}] --- A verificar sensores... ---")
+    
+    try:
+        es = Elasticsearch(ES_HOST, basic_auth=(ES_USER, ES_PASS), verify_certs=False)
+        
+        tempo_atras = datetime.now(timezone.utc) - timedelta(minutes=INTERVALO_MINUTOS)
+        timestamp_str = tempo_atras.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+
+        query = {
+            "range": {
+                "@timestamp": { "gte": timestamp_str }
+            }
+        }
+
+        resposta = es.search(index=INDEX_NAME, query=query, size=20, sort=[{"@timestamp": "desc"}])
+        hits = resposta['hits']['hits']
+        
+        if not hits:
+            print("Nenhum dado recebido nos ultimos minutos.")
+            return
+
+        print(f"Analisando {len(hits)} registos recentes...")
+
+        for hit in hits:
+            dado = hit['_source']
+            payload = dado.get('payload', {})
+            if not payload: payload = dado.get('payload_data', {})
+            
+            # Identificar ID do Sensor
+            sensor_id = dado.get('sensor', {}).get('device', 'Desconhecido')
+            if sensor_id == 'Desconhecido': sensor_id = dado.get('device', 'Desconhecido')
+
+
+            for campo_tecnico, config in LIMITES.items():
+                
+                if campo_tecnico in payload:
+                    valor_atual = payload[campo_tecnico]
+
+                    if isinstance(valor_atual, (int, float)) and valor_atual > config['limite']:
+                        
+                        print(f"⚠️  ALERTA DETETADO: {config['nome']} está a {valor_atual} (Limite: {config['limite']})")
+                        
+                        enviar_email(
+                            sensor=sensor_id, 
+                            tipo_alerta=config['nome'], 
+                            valor=valor_atual, 
+                            limite=config['limite'], 
+                            unidade=config['unidade']
+                        )
+                        time.sleep(10) 
+                    
+    except Exception as e:
+        print(f"ERRO DE LIGAÇÃO/EXECUÇÃO: {e}")
+
+def enviar_email(sensor, tipo_alerta, valor, limite, unidade):
+    assunto = f"ALERTA TESTE: {tipo_alerta} a {valor}{unidade}"
+    corpo = f"""
+    AVISO DE SEGURANÇA - SALA LIMPA
+    
+    Isto é um email automático de teste.
+    
+    Sensor: {sensor}
+    Métrica: {tipo_alerta}
+    Valor Atual: {valor} {unidade}
+    Limite: {limite} {unidade}
+    
+    Hora: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+    """
+
+    msg = MIMEText(corpo)
+    msg['Subject'] = assunto
+    msg['From'] = EMAIL_ORIGEM
+    msg['To'] = EMAIL_DESTINO
+
+    try:
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(EMAIL_ORIGEM, EMAIL_PASSWORD)
+        server.sendmail(EMAIL_ORIGEM, EMAIL_DESTINO, msg.as_string())
+        server.quit()
+        print(f"-> EMAIL ENVIADO COM SUCESSO PARA {EMAIL_DESTINO}")
+    except Exception as e:
+        print(f"Erro a enviar email (Verifica a App Password): {e}")
+
+if __name__ == "__main__":
+    print("--- Monitorizacao Iniciada (Modo Teste) ---")
+    while True:
+        verificar_sensores()
+        time.sleep(60) # Verifica a cada 1 minuto para testares rápido

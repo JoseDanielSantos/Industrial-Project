@@ -1,0 +1,4 @@
+config.reload.automatic: ${CONFIG_RELOAD_AUTOMATIC}
+path.data: /usr/share/logstash/data
+path.logs: /usr/share/logstash/logs
+xpack.monitoring.enabled: ${XPACK_MONITORING_ENABLED}

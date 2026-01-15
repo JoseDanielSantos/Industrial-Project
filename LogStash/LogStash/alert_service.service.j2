@@ -1,0 +1,13 @@
+[Unit]
+Description=Servico de Alerta de Temperatura (Elasticsearch Monitor)
+After=network.target docker.service
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/python3 /opt/monitorizacao/alert_system.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

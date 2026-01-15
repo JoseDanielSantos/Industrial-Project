@@ -1,0 +1,125 @@
+input {
+  http {
+    host => "0.0.0.0"
+    port => 5044
+
+    ecs_compatibility => "disabled"
+
+    user => "elastic"
+    password => "changeme"
+
+    codec => json {
+      target => "python_event"
+    }
+  }
+}
+
+filter {
+  mutate {
+    rename => { "[python_event][source]" => "[sensor][source]" }
+    rename => { "[python_event][device]" => "[sensor][device]" }
+    rename => { "[python_event][topic]"  => "[sensor][topic]" }
+    rename => { "[python_event][ingested_at]" => "ingested_at" }
+
+    rename => { "[python_event][payload]" => "payload_data" }
+  }
+
+  if [payload_data][temperature_1] {
+    mutate {
+      add_field => { "temperature" => "%{[payload_data][temperature_1]}" }
+    }
+    mutate {
+      convert => { "temperature" => "float" }
+    }
+  }
+
+  if [payload_data][temperature_2] {
+    mutate {
+      add_field => { "humidity" => "%{[payload_data][temperature_2]}" }
+    }
+    mutate {
+      convert => { "humidity" => "float" }
+    }
+  }
+
+  if [payload_data][temperature_3] {
+    mutate {
+      add_field => { "vibration" => "%{[payload_data][temperature_3]}" }
+    }
+    mutate {
+      convert => { "vibration" => "float" }
+    }
+  }
+
+  if [payload_data][temperature_4] {
+    mutate {
+      add_field => { "PM1" => "%{[payload_data][temperature_4]}" }
+    }
+    mutate {
+      convert => { "PM1" => "float" }
+    }
+  }
+
+  if [payload_data][temperature_5] {
+    mutate {
+      add_field => { "PM25" => "%{[payload_data][temperature_5]}" }
+    }
+    mutate {
+      convert => { "PM25" => "float" }
+    }
+  }
+  
+    if [payload_data][temperature_6] {
+    mutate {
+      add_field => { "PM10" => "%{[payload_data][temperature_5]}" }
+    }
+    mutate {
+      convert => { "PM10" => "float" }
+    }
+  }
+
+  if [payload_data][linkquality] {
+    mutate {
+      add_field => { "link_quality" => "%{[payload_data][linkquality]}" }
+    }
+    mutate {
+      convert => { "link_quality" => "integer" }
+    }
+  }
+
+  if [payload_data][battery] {
+    mutate {
+      add_field => { "battery" => "%{[payload_data][battery]}" }
+    }
+    mutate {
+      convert => { "battery" => "integer" }
+    }
+  }
+
+  mutate {
+    remove_field => [
+      "python_event", 
+      "headers", 
+      "event", 
+      "host", 
+      "@version",
+      "url",
+      "user_agent",
+      "http",
+      "payload_data" # Removemos o bruto depois de extrair o que queríamos
+    ]
+  }
+}
+
+output {
+  elasticsearch {
+    hosts => ["http://elasticsearch:9200"]
+    index => "salalimpa-%{+YYYY.MM}"
+    user => "elastic"
+    password => "changeme"
+  }
+
+  stdout {
+    codec => rubydebug
+  }
+}

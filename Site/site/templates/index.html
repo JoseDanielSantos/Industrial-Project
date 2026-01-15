@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clean Room Dashboard</title>
+    <style>
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background-color: #f4f6f8; }
+        
+        /* Sidebar */
+        .sidebar {
+            height: 100vh; width: 280px; position: fixed; top: 0; left: 0;
+            background-color: white; padding: 20px; box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+            display: flex; flex-direction: column; overflow-y: auto;
+        }
+        .logo { max-width: 160px; margin: 0 auto 30px auto; display: block; }
+        
+        /* Form Styles */
+        .report-form {
+            background-color: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #eee;
+        }
+        .form-group { margin-bottom: 15px; text-align: left; }
+        label { display: block; font-size: 0.9em; color: #555; margin-bottom: 5px; font-weight: 600; }
+        
+        select {
+            width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;
+        }
+        
+        .checkbox-group { display: flex; flex-direction: column; gap: 8px; }
+        .checkbox-item { display: flex; align-items: center; font-size: 0.9em; cursor: pointer; }
+        .checkbox-item input { margin-right: 10px; accent-color: #d81b60; }
+
+        .btn-report {
+            background-color: #d81b60; color: white; padding: 12px; width: 100%;
+            text-decoration: none; border: none; border-radius: 6px; font-weight: bold;
+            cursor: pointer; margin-top: 15px; transition: background 0.3s;
+            font-size: 1em;
+        }
+        .btn-report:hover { background-color: #ad1457; }
+
+        /* Main Content */
+        .main-content { margin-left: 320px; height: 100vh; }
+        iframe { width: 100%; height: 100%; border: none; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <img src="/PICadvanced_logo.png" alt="PICadvanced" class="logo">
+        
+        <h3 style="text-align: center; color: #333; margin-top: 0;">Reports</h3>
+        
+        <form action="/gerar-relatorio" method="get" class="report-form">
+            
+            <div class="form-group">
+                <label for="dias">Time Range:</label>
+                <select name="dias" id="dias">
+                    <option value="15m">Last 15 Minutes</option>
+                    <option value="1d">Last 24 Hours</option>
+                    <option value="1w">Last Week</option>
+                    <option value="1M">Last Month</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Metrics to Include:</label>
+                <div class="checkbox-group">
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="metricas" value="temp" checked> Temperature
+                    </label>
+
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="metricas" value="hum" checked> Humidity
+                    </label>
+
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="metricas" value="vib" checked> Vibration
+                    </label>
+
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="metricas" value="pm1"> PM 1.0
+                    </label>
+
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="metricas" value="pm25" checked> PM 2.5
+                    </label>
+
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="metricas" value="pm10"> PM 10
+                    </label>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-report">📄 Generate PDF</button>
+        </form>
+        
+        <div style="margin-top: auto; font-size: 0.8em; color: #999; text-align: center;">
+            <p>System v2.2</p>
+        </div>
+    </div>
+
+    <div class="main-content">
+       <iframe src="http://localhost:5601/app/dashboards#/view/37f1de15-ec2c-4ca7-af57-c2a5fa6e5531?embed=true&_g=%28refreshInterval%3A%28pause%3A%21t%2Cvalue%3A60000%29%2Ctime%3A%28from%3A%272026-01-08T00%3A28%3A09.552Z%27%2Cto%3A%272026-01-08T00%3A28%3A49.510Z%27%29%29&show-query-input=true&show-time-filter=true" height="600" width="800"></iframe>
+    </div>
+
+</body>
+</html>

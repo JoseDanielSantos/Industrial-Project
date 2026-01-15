@@ -1,0 +1,2 @@
+[zigbee_servers]
+[ip da Gateway] ansible_user=[nome da maquina virtual]
