@@ -3,7 +3,7 @@ import time
 import requests
 import paho.mqtt.client as mqtt
 
-MQTT_HOST = "192.168.50.2"
+MQTT_HOST = "[ip address da Gateway]"
 MQTT_PORT = 1883
 MQTT_TOPIC = "zigbee2mqtt/#"
 
