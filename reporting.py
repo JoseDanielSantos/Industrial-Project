@@ -82,7 +82,6 @@ def generate_pdf():
     pdf.cell(40, 8, "Metric", 1, 0, 'C', fill=True)
     pdf.cell(30, 8, "Value", 1, 1, 'C', fill=True)
 
-    #Linhas da tabela
     pdf.set_font("Helvetica", size=9)
     for row in data:
         ts = row.get('timestamp', 'N/A')
