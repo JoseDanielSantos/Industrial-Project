@@ -94,7 +94,7 @@
         status_code: 200
         validate_certs: false
 
-      
+
     - name: 5.1 ATIVAR SERVIÇO PYTHON DE LEITURA
       ansible.builtin.systemd:
         name: sensor_service
@@ -102,7 +102,7 @@
         enabled: true
         daemon_reload: true 
 
-# --- FASE 6: SISTEMA DE ALERTAS (PYTHON) ---
+
 
     - name: 6.1 DEPENDÊNCIAS - Instalar biblioteca elasticsearch para Python
       ansible.builtin.pip:
@@ -137,7 +137,7 @@
         state: started
         enabled: true
         daemon_reload: true
-  # --- HANDLERS (Ficam sempre no fim do ficheiro) ---
+
   handlers:
    - name: Reiniciar Sensor Service
      ansible.builtin.service:
