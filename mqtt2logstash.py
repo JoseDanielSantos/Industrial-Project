@@ -3,19 +3,16 @@ import time
 import requests
 import paho.mqtt.client as mqtt
 
-# --- MQTT (onde o Zigbee2MQTT publica) ---
 MQTT_HOST = "192.168.50.2"
 MQTT_PORT = 1883
 MQTT_TOPIC = "zigbee2mqtt/#"
 
-# Se o teu broker tiver user/pass, preenche:
 MQTT_USER = None
 MQTT_PASSWORD = None
 
-# --- Logstash HTTP input (o teu já está a correr em 8080) ---
 LOGSTASH_URL = "http://localhost:5044"
-LOGSTASH_USER = "botas"
-LOGSTASH_PASSWORD = "minha_senha_123"
+LOGSTASH_USER = "elastic"
+LOGSTASH_PASSWORD = "changeme"
 
 session = requests.Session()
 session.auth = (LOGSTASH_USER, LOGSTASH_PASSWORD)
@@ -23,7 +20,6 @@ session.headers.update({"Content-Type": "application/json"})
 
 
 def send_to_logstash(event: dict):
-    # retries simples
     for _ in range(3):
         try:
             r = session.post(LOGSTASH_URL, data=json.dumps(event), timeout=5)
@@ -45,14 +41,10 @@ def on_connect(client, userdata, flags, reason_code, properties=None):
 def on_message(client, userdata, msg):
     topic = msg.topic
     payload_raw = msg.payload.decode("utf-8", errors="replace").strip()
-
-    # A maioria das mensagens do Zigbee2MQTT são JSON
     try:
         payload = json.loads(payload_raw)
     except json.JSONDecodeError:
         payload = {"value": payload_raw}
-
-    # Extra útil: device vem do tópico zigbee2mqtt/<device>
     device = None
     if topic.startswith("zigbee2mqtt/"):
         parts = topic.split("/", 1)
@@ -63,7 +55,6 @@ def on_message(client, userdata, msg):
         "topic": topic,
         "device": device,
         "payload": payload,
-        # timestamp de ingestão (Logstash também mete @timestamp, mas isto ajuda)
         "ingested_at": time.strftime("%Y-%m-%d %H:%M:%S"),
     }
 
